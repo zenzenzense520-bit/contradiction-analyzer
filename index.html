@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>矛盾分析器 · 离线版</title>
+  <style>
+    :root{--ink:#1d1917;--muted:#756e68;--paper:#f2eee4;--card:#fbf9f3;--line:#d8d0c2;--red:#8d1f23;--red2:#5f1014;--green:#39664a}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--ink);background:radial-gradient(circle at 90% 4%,rgba(141,31,35,.09),transparent 30rem),linear-gradient(rgba(29,25,23,.025) 1px,transparent 1px),var(--paper);background-size:auto,100% 32px,auto;font-family:"Microsoft YaHei","PingFang SC",sans-serif}
+    button,textarea,input{font:inherit}button{cursor:pointer}.serif{font-family:"Songti SC",SimSun,Georgia,serif}.hidden{display:none!important}
+    .topbar{position:sticky;top:0;z-index:20;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;min-height:72px;padding:0 38px;border-bottom:1px solid #d8d0c2;background:rgba(242,238,228,.94);backdrop-filter:blur(12px)}
+    .brand{display:flex;align-items:center;gap:12px}.seal{display:grid;width:38px;height:38px;place-items:center;color:#fff;background:var(--red);font:22px SimSun}.brand strong{letter-spacing:.12em}.brand small{display:block;margin-top:2px;color:var(--muted);font-size:8px;letter-spacing:.16em}
+    .nav{display:flex;gap:4px}.nav button{padding:9px 14px;border:0;border-bottom:2px solid transparent;color:#57504b;background:none}.nav button.active{color:var(--red);border-color:var(--red)}
+    .offline{justify-self:end;display:flex;align-items:center;gap:7px;color:var(--green);font-size:12px}.offline:before{content:"";width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 4px rgba(57,102,74,.12)}
+    main{max-width:1360px;margin:auto;padding:48px 36px 96px}.eyebrow{margin:0;color:var(--red);font-size:11px;font-weight:800;letter-spacing:.15em;text-transform:uppercase}
+    .hero{display:grid;grid-template-columns:1fr 310px;align-items:end;gap:70px;padding:24px 0 46px}.hero h1{margin:14px 0 20px;font:900 clamp(42px,6vw,84px)/1.05 "Songti SC",SimSun,serif;letter-spacing:-.05em}.hero h1 em{color:var(--red);font-style:normal}.hero-copy{max-width:680px;color:#59524d;line-height:1.9}.methods{display:flex;flex-wrap:wrap;gap:10px 24px;margin-top:22px;color:var(--muted);font-size:12px}.methods span:before{content:"◆";margin-right:7px;color:var(--red);font-size:7px}
+    .quote{position:relative;padding:28px;border-top:3px solid var(--red);background:rgba(255,255,255,.4)}.quote b{position:absolute;top:0;color:rgba(141,31,35,.17);font:64px Georgia}.quote p{position:relative;margin:6px 0 14px;font:700 18px/1.8 "Songti SC",SimSun,serif}.quote small{color:var(--muted)}
+    .panel{border:1px solid var(--line);background:rgba(251,249,243,.96);box-shadow:0 22px 70px rgba(48,31,23,.08)}.toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:15px 24px;border-bottom:1px solid var(--line)}
+    .modes{display:flex;flex-wrap:wrap;gap:5px}.modes button,.rl{padding:8px 11px;border:1px solid transparent;color:var(--muted);background:none;font-size:12px}.modes button.active{color:#fff;background:var(--ink)}.rl{border-color:var(--line);background:#fff}.rl.active{color:var(--red);border-color:var(--red);background:#fff5f1}
+    .framework{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 18px;padding:11px 24px;color:#6d2024;background:#edddd7;font-size:12px}.composer textarea{display:block;width:100%;min-height:150px;padding:28px;border:0;outline:0;resize:vertical;color:var(--ink);background:transparent;font:22px/1.7 "Songti SC",SimSun,serif}
+    .compose-foot{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:15px 24px;border-top:1px solid var(--line)}.chips{display:flex;flex-wrap:wrap;gap:7px}.chip{padding:6px 9px;border:1px solid var(--line);color:var(--muted);background:transparent;font-size:11px}.chip:hover{color:var(--red);border-color:#bb8b84}
+    .primary{padding:11px 18px;border:1px solid var(--red);color:#fff;background:var(--red);font-weight:700}.primary:hover{background:var(--red2)}.notice{margin-top:14px;padding:12px 14px;border-left:3px solid var(--red);color:#6d2024;background:#f2e1db;font-size:13px}
+    .result-grid{display:grid;grid-template-columns:220px 1fr;gap:28px;margin-top:30px;align-items:start}.side{position:sticky;top:94px;padding:17px;border-left:1px solid var(--line)}.side a{display:block;padding:6px;color:var(--muted);font-size:12px;text-decoration:none}.side a:hover{color:var(--red)}
+    .result-head,.card,.citation{padding:24px 27px;border:1px solid var(--line);background:var(--card)}.result-head{display:flex;align-items:center;justify-content:space-between;gap:25px}.result-head h2{margin:8px 0 0;font:800 30px "Songti SC",SimSun,serif}.score-big{text-align:center;color:var(--red)}.score-big b{display:block;font:44px Georgia}.score-big small{color:var(--muted)}
+    .result-body{display:grid;gap:14px}.status{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;color:var(--muted);font-size:12px}.tags{display:flex;gap:6px}.tag{padding:4px 7px;background:#eae4d9}.premise{padding:17px;border-left:4px solid #ad7625;background:#f6ead5;color:#694f2e;font-size:13px;line-height:1.7}
+    .card h3{margin:0;font:800 21px "Songti SC",SimSun,serif}.card-top{display:flex;justify-content:space-between;gap:14px}.card p{margin:14px 0 0;color:#57504b;line-height:1.85}.kind{flex:none;padding:4px 7px;border:1px solid;font-size:10px}.fact{color:#28613c;background:#e5f0e6}.inference{color:#5d4670;background:#eee7f2}.user{color:#872126;background:#f5dfda}.other{color:#3f5373;background:#e7edf4}.classic{color:#76501f;background:#f7edd9}
+    .flow{display:flex;align-items:center;gap:8px;overflow:auto;margin-top:18px}.node{flex:none;padding:10px;border:1px solid var(--line);background:#f6f0e5;font:14px SimSun}.arrow{color:var(--red)}.citation{border-left:4px solid var(--red)}.citation h4{margin:7px 0;font:700 18px SimSun}.citation p{color:#59524d;line-height:1.8}.link-btn{padding:0;border:0;color:var(--red);background:none;font-size:12px;font-weight:700}.excerpt.collapsed{display:-webkit-box;overflow:hidden;-webkit-line-clamp:3;-webkit-box-orient:vertical}
+    .workspace{padding:30px}.workspace h2{margin:9px 0;font:800 34px SimSun}.doc-grid,.settings{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:24px}.doc{padding:20px;border:1px solid var(--line);background:#f8f4eb}.doc h3{margin:9px 0;font:700 19px SimSun}.doc p{color:var(--muted);font-size:12px}.upload{display:inline-block;margin-top:15px}.history-row{display:flex;width:100%;justify-content:space-between;gap:20px;padding:17px 5px;border:0;border-bottom:1px solid var(--line);background:none;text-align:left}.history-row small{color:var(--muted)}.settings div{padding:20px;border:1px solid var(--line)}.settings p{color:var(--muted);font-size:13px;line-height:1.7}
+    .mobile-nav{display:none}
+    @media(max-width:850px){.topbar{grid-template-columns:1fr auto;padding:0 16px}.nav{display:none}.hero{grid-template-columns:1fr;padding-top:10px}.quote{display:none}.result-grid{grid-template-columns:1fr}.side{display:none}.mobile-nav{position:fixed;bottom:0;left:0;right:0;z-index:30;display:grid;grid-template-columns:repeat(5,1fr);height:66px;border-top:1px solid var(--line);background:rgba(251,249,243,.97)}.mobile-nav button{border:0;color:var(--muted);background:none;font-size:11px}.mobile-nav button.active{color:var(--red)}}
+    @media(max-width:600px){main{padding:30px 15px 86px}.offline{display:none}.hero h1{font-size:42px}.toolbar,.compose-foot{align-items:stretch;flex-direction:column}.primary{width:100%}.doc-grid,.settings{grid-template-columns:1fr}.result-head,.card,.citation,.workspace{padding:19px}.history-row{flex-direction:column}}
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="seal">矛</span><div><strong class="serif">矛盾分析器</strong><small>CONTRADICTION ANALYZER</small></div></div>
+    <nav class="nav" id="topNav"></nav>
+    <div class="offline">浏览器内分析 · 问题留在本机</div>
+  </header>
+  <main>
+    <section id="analysisView">
+      <div class="hero" id="hero">
+        <div><p class="eyebrow">浏览器内思想实验室</p><h1>用理论观察现实，<br><em>用现实检验理论。</em></h1><p class="hero-copy">拆解事实，识别矛盾，回到文本，再让具体人的生活检验结论。在线可直接使用；离线请保留整个文件夹并双击 index.html。</p><div class="methods"><span>历史唯物主义</span><span>政治经济学</span><span>多理论比较</span><span>证据意识</span></div></div>
+        <aside class="quote"><b>“</b><p>结构分析如果失去具体的人，就失去了改变结构的目的。</p><small>R&amp;L v0.1 · 用户定义理论主张</small></aside>
+      </div>
+      <section class="panel composer">
+        <div class="toolbar"><div class="modes" id="modeButtons"></div><button class="rl" id="rlButton">革命与爱 R&amp;L</button></div>
+        <div class="framework hidden" id="framework"><strong>当前分析框架：革命与爱（R&amp;L）</strong><span>历史唯物主义 · 辩证唯物主义 · 政治经济学 · 个人解放 · 技术解放 · 国际主义</span></div>
+        <textarea id="question" maxlength="4000" aria-label="分析问题">为什么大学生越来越难找到满意的工作？</textarea>
+        <div class="compose-foot"><div class="chips" id="quickQuestions"></div><button class="primary" id="analyzeButton">开始分析 →</button></div>
+      </section>
+      <p class="notice hidden" id="appError" role="alert"></p>
+      <div id="result"></div>
+    </section>
+    <section class="panel workspace hidden" id="documentsView">
+      <p class="eyebrow">浏览器本地知识库</p><h2>文献与研究笔记</h2>
+      <label class="primary upload">导入 TXT / Markdown<input id="fileInput" type="file" accept=".txt,.md" hidden></label>
+      <p class="notice">离线版已内置可核对的经典文献索引。也可导入 TXT、Markdown；导入内容保存在当前浏览器，不会上传网络。PDF/DOCX 请先转成文本。</p>
+      <div class="doc-grid" id="docList"></div>
+    </section>
+    <section class="panel workspace hidden" id="historyView"><p class="eyebrow">浏览器本地保存</p><h2>最近分析</h2><div id="historyList"></div></section>
+    <section class="panel workspace hidden" id="settingsView"><p class="eyebrow">使用说明</p><h2>设置</h2><div class="settings"><div><strong>运行方式</strong><p>纯前端页面，可从本地文件夹或 GitHub Pages 打开，不需要安装 Node 或 Python。</p></div><div><strong>模型状态</strong><p>使用浏览器内的原文检索与规则分析，不调用真实大模型。</p></div><div><strong>理论版本</strong><p>革命与爱 R&amp;L v0.1，用户自定义理论。</p></div><div><strong>数据位置</strong><p>问题、历史和导入文本保存在当前浏览器。</p></div></div></section>
+  </main>
+  <nav class="mobile-nav" id="mobileNav"></nav>
+  <!-- 文献索引与分析逻辑已拆分；保留 file:// 双击打开入口。 -->
+  <script src="corpus.js"></script>
+  <script src="src/retrieval.js"></script>
+  <script src="src/analysis.js"></script>
+  <script src="src/app.js"></script>
+</body>
+</html>

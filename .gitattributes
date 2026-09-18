@@ -1,0 +1,2 @@
+# 保持 Bash 脚本的换行符，避免 Windows 克隆后无法执行。
+*.sh text eol=lf
