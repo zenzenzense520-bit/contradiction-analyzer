@@ -1,4 +1,4 @@
-// 使用真实 Edge 的 file:// 页面点击“开始分析”，验证引文确实显示。
+// 使用真实 Edge 点击检索，验证本地或线上页面显示原著位置。
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -10,6 +10,7 @@ const edgeCandidates = [process.env["PROGRAMFILES(X86)"],process.env.PROGRAMFILE
   .filter(Boolean).map(base => path.join(base,"Microsoft","Edge","Application","msedge.exe"));
 const edge = edgeCandidates.find(candidate => fs.existsSync(candidate));
 const profile = path.join(root,"logs",`edge-smoke-${process.pid}`);
+const pageUrl = process.argv[2] || pathToFileURL(path.join(root,"index.html")).href;
 const sleep = ms => new Promise(resolve => setTimeout(resolve,ms));
 
 async function debuggerPort() {
@@ -38,13 +39,13 @@ async function evaluate(socket, expression) {
 async function main() {
   assert.ok(edge,"未找到 Microsoft Edge，无法运行浏览器测试");
   const child = spawn(edge,["--headless","--disable-gpu","--no-first-run","--remote-debugging-port=0",
-    `--user-data-dir=${profile}`,pathToFileURL(path.join(root,"index.html")).href],
+    `--user-data-dir=${profile}`,pageUrl],
     {windowsHide:true,stdio:"ignore"});
   let socket;
   try {
     const port = await debuggerPort();
     const targets = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
-    const target = targets.find(item => item.type === "page" && item.url.endsWith("/index.html"));
+    const target = targets.find(item => item.type === "page" && item.url.startsWith(pageUrl));
     assert.ok(target,"未找到本地 HTML 页面");
     socket = new WebSocket(target.webSocketDebuggerUrl);
     await new Promise((resolve,reject) => {socket.onopen=resolve;socket.onerror=reject;});
@@ -58,35 +59,26 @@ async function main() {
     }
     assert.ok(ready,"本地页面脚本未准备好");
     const result = await evaluate(socket,`(() => {
-      document.getElementById("question").value = "AI 自动化怎样影响工人劳动时间？";
+      document.getElementById("question").value = "剩余价值";
       document.getElementById("analyzeButton").click();
       return {cards:document.querySelectorAll(".citation").length,
         text:document.getElementById("result").innerText,
         error:document.getElementById("appError").innerText};
     })()`);
     assert.equal(result.error,"","浏览器页面出现错误");
-    assert.ok(result.cards > 0,"点击分析后没有引文卡片");
-    assert.ok(result.text.includes("资本论"),"分析结果没有引用相关经典原文");
-    assert.ok(result.text.includes("无实时事实数据"),"事实边界说明缺失");
-    const framework = await evaluate(socket,`(() => {
-      document.getElementById("rlButton").click();
+    assert.ok(result.cards > 0,"点击检索后没有原著卡片");
+    assert.ok(result.text.includes("剩余价值") && result.text.includes("打开中文马克思主义文库原网页"),"原文或来源链接缺失");
+    const filtered = await evaluate(socket,`(() => {
+      const author=document.getElementById("authorFilter");author.value="毛泽东";author.dispatchEvent(new Event("change"));
+      const work=document.getElementById("workFilter");work.value="实践论";work.dispatchEvent(new Event("change"));
+      document.getElementById("question").value="实践";
       document.getElementById("analyzeButton").click();
-      return {sections:document.querySelectorAll(".card[id]").length,
-        includesLove:document.getElementById("result").innerText.includes("8. 爱维度")};
+      return document.getElementById("result").innerText;
     })()`);
-    assert.equal(framework.sections,11,"R&L 页面没有显示 11 个分析维度");
-    assert.ok(framework.includesLove,"R&L 的个人解放维度缺失");
-    const blocked = await evaluate(socket,`(async () => {
-      const previous = app.documents.length;
-      const fakeFile = new File(["作者：托洛茨基"],"Trotsky.txt",{type:"text/plain"});
-      await document.getElementById("fileInput").onchange.call({files:[fakeFile]});
-      return app.documents.length === previous &&
-        document.getElementById("appError").textContent.includes("不能导入托派作者文献");
-    })()`);
-    assert.ok(blocked,"托派作者文件未被拦截");
-    console.log(`通过：真实 Edge 点击分析，显示 ${result.cards} 条原文引文。`);
-    console.log("通过：R&L 模式显示 11 个分析维度。");
-    console.log("通过：托派作者文件导入被拦截。");
+    assert.ok(filtered.includes("毛泽东") && filtered.includes("《实践论》"),"作者作品筛选未显示正确结果");
+    assert.ok(!filtered.includes("用户理论") && !filtered.includes("R&L"),"旧分析输出仍然存在");
+    console.log(`通过：真实 Edge 检索“剩余价值”，显示 ${result.cards} 条原著位置。`);
+    console.log("通过：作者与作品筛选定位到毛泽东《实践论》。");
   } finally {
     if (socket) socket.close();
     child.kill();
