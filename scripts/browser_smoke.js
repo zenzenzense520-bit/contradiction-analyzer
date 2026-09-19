@@ -77,8 +77,18 @@ async function main() {
     })()`);
     assert.ok(filtered.includes("毛泽东") && filtered.includes("《实践论》"),"作者作品筛选未显示正确结果");
     assert.ok(!filtered.includes("用户理论") && !filtered.includes("R&L"),"旧分析输出仍然存在");
+    // 新增文库必须在真实浏览器中可按作者和作品定位。
+    const expanded = await evaluate(socket,`(() => {
+      const author=document.getElementById("authorFilter");author.value="周恩来";author.dispatchEvent(new Event("change"));
+      const work=document.getElementById("workFilter");work.value="和平共处五项原则";work.dispatchEvent(new Event("change"));
+      document.getElementById("question").value="和平共处";
+      document.getElementById("analyzeButton").click();
+      return document.getElementById("result").innerText;
+    })()`);
+    assert.ok(expanded.includes("周恩来") && expanded.includes("《和平共处五项原则》"),"扩展文库未显示正确结果");
     console.log(`通过：真实 Edge 检索“剩余价值”，显示 ${result.cards} 条原著位置。`);
     console.log("通过：作者与作品筛选定位到毛泽东《实践论》。");
+    console.log("通过：扩展文库定位到周恩来《和平共处五项原则》。");
   } finally {
     if (socket) socket.close();
     child.kill();
