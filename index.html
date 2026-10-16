@@ -4,26 +4,26 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#171c1b">
-  <meta name="description" content="检索中文原著段落，核对作品、索引位置与原网页。">
-  <title>原著定位 · 马恩列斯毛文献检索</title>
+  <meta name="description" content="检索与阅读中文原著，按专题学习马恩列斯毛经典文献。">
+  <title>原著学习 · 马恩列斯毛经典文献</title>
   <link rel="stylesheet" href="src/style.css">
 </head>
 <body>
-  <!-- 界面升级：保留纯静态入口与相对路径，支持本地双击打开。 -->
   <header class="topbar">
     <div class="topbar-inner">
-      <div class="brand"><span class="brand-mark" aria-hidden="true">原</span><span><strong>原著定位</strong><small>MARXIST TEXT ARCHIVE</small></span></div>
+      <div class="brand"><span class="brand-mark" aria-hidden="true">原</span><span><strong>原著学习</strong><small>MARXIST TEXT ARCHIVE</small></span></div>
       <nav class="nav" id="topNav" aria-label="主导航"></nav>
       <span class="offline"><i aria-hidden="true"></i>本地检索 · 无需登录</span>
     </div>
   </header>
   <main class="main-shell">
+    <!-- 01 原著检索 -->
     <section id="searchView">
       <div class="hero" id="hero">
         <div class="hero-main">
-          <p class="eyebrow"><span class="eyebrow-line"></span>中文原著文献检索 / TEXT LOCATOR</p>
+          <p class="eyebrow"><span class="eyebrow-line"></span>中文原著学习 / READ THE ORIGINALS</p>
           <h1>从一个词，<br>走进一段<em>原著。</em></h1>
-          <p class="hero-copy">在已收录的马恩列斯毛及扩展文献中查找真实段落。看清作者、作品和网页位置，再回到来源核对完整上下文。</p>
+          <p class="hero-copy">在已收录的马恩列斯毛及扩展文献中查找真实段落，或顺着作品连续阅读，再回到来源核对完整上下文。</p>
           <div class="hero-actions"><button class="text-action" id="browseButton" type="button">浏览收录目录 <span aria-hidden="true">↗</span></button><span>全文检索 · 离线可用</span></div>
         </div>
         <aside class="hero-aside" aria-label="当前索引概况">
@@ -50,30 +50,79 @@
       <p class="notice hidden" id="appError" role="alert"></p>
       <div id="result" aria-live="polite"></div>
     </section>
+
+    <!-- 02 专题学习 -->
+    <section class="workspace hidden" id="topicsView">
+      <div class="section-intro"><p class="eyebrow">02 / STUDY PATH</p><h2>专题学习路径</h2><p>按主题组织已收录作品，给出建议阅读顺序。顺着一个专题读下来，建立完整的认识。</p></div>
+      <div id="topicList" class="topic-list"></div>
+    </section>
+
+    <!-- 03 每日精读 -->
+    <section class="workspace hidden" id="dailyView">
+      <div class="section-intro"><p class="eyebrow">03 / DAILY READING</p><h2>每日精读一段</h2><p>每天从原著中精选一段，读完后打卡。连续打卡，养成读原著的习惯。</p></div>
+      <div id="dailyCard"></div>
+      <div id="dailyStats"></div>
+    </section>
+
+    <!-- 04 文献库 -->
     <section class="workspace hidden" id="documentsView">
-      <div class="section-intro"><p class="eyebrow">02 / COLLECTION</p><h2>文献目录</h2><p>只展示已经进入本地全文索引的作品。点击作品可直接限定检索范围。</p></div>
+      <div class="section-intro"><p class="eyebrow">04 / COLLECTION</p><h2>文献库</h2><p>只展示已经进入本地全文索引的作品。点击作品可连续阅读，或限定检索范围。</p></div>
       <div class="catalog-toolbar"><label for="catalogQuery">查找作品</label><input id="catalogQuery" type="search" placeholder="输入作品或作者" autocomplete="off"><span id="catalogCount"></span></div>
       <div class="doc-grid" id="docList"></div>
     </section>
-    <section class="workspace hidden" id="historyView">
-      <div class="section-intro"><p class="eyebrow">03 / HISTORY</p><h2>最近检索</h2><p>检索记录保存在当前浏览器中。</p></div>
-      <div class="history-toolbar"><span>最近 30 条</span><button class="text-action" id="clearHistory" type="button">清空历史</button></div>
-      <div id="historyList"></div>
+
+    <!-- 05 我的学习 -->
+    <section class="workspace hidden" id="mineView">
+      <div class="section-intro"><p class="eyebrow">05 / MY STUDY</p><h2>我的学习</h2><p>收藏、笔记、检索历史与打卡记录都保存在当前浏览器，离线可用。</p></div>
+      <div class="mine-stats" id="mineStats"></div>
+      <div class="mine-tabs" id="mineTabs"></div>
+      <div id="mineFavorites"></div>
+      <div id="mineHistory" class="hidden"></div>
     </section>
+
+    <!-- 阅读模式（全屏次级视图） -->
+    <section class="reader-view hidden" id="readerView">
+      <div class="reader-topbar">
+        <button class="reader-back" id="readerBack" type="button">← 返回</button>
+        <div class="reader-heading"><h2 id="readerWorkTitle">—</h2><span id="readerWorkAuthor">—</span></div>
+        <button class="reader-toc-btn" id="readerTocBtn" type="button">目录</button>
+      </div>
+      <div class="reader-shell">
+        <aside class="reader-toc" id="readerToc"></aside>
+        <div class="reader-content">
+          <div class="reader-page-head" id="readerPageHead"></div>
+          <div id="readerBody" class="reader-body"></div>
+          <div class="reader-page-nav" id="readerPageNav"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 使用说明（全屏次级视图） -->
     <section class="workspace hidden" id="settingsView">
-      <div class="section-intro"><p class="eyebrow">04 / GUIDE</p><h2>使用说明</h2><p>从检索到核对，只需三个步骤。</p></div>
+      <div class="section-intro"><p class="eyebrow">GUIDE</p><h2>使用说明</h2><p>从检索、阅读到收藏，只需几个步骤。</p></div>
       <div class="guide-grid">
-        <article><span>01</span><h3>输入关键词</h3><p>完整短语适合找原句；输入空格分隔的词，可切换“包含全部词”或“包含任意词”。</p></article>
-        <article><span>02</span><h3>确认索引位置</h3><p>结果列出作者、作品、网页标题与索引段落序号。序号由本工具生成，并非纸本页码。</p></article>
-        <article><span>03</span><h3>核对来源</h3><p>展开段落阅读当前索引全文，点击来源网页检查原文、注释及版本。</p></article>
+        <article><span>01</span><h3>检索定位</h3><p>完整短语适合找原句；输入空格分隔的词，可切换“包含全部词”或“包含任意词”，再按作者、作品筛选。</p></article>
+        <article><span>02</span><h3>连续阅读</h3><p>在文献库或专题中点击“开始阅读”，按网页顺序通读原著；阅读进度自动保存，可随时继续。</p></article>
+        <article><span>03</span><h3>收藏笔记</h3><p>把重点段落收藏、写笔记，集中在“我的学习”查看；每日精读一段并打卡，连续记录。</p></article>
+        <article><span>04</span><h3>核对来源</h3><p>段落序号由本工具生成，并非纸本页码；引用前请点击来源网页核对原文、注释与版本。</p></article>
       </div>
       <div class="source-note"><strong>资料与范围</strong><p>当前索引收录中文马克思主义文库中的指定作品，属于选编范围，不代表《列宁全集》《斯大林选集》《毛泽东选集》等整套版本全部入库。文献内容可能包含译本与编者文字，引用前请核查来源。</p><a href="docs/文献来源.md">查看文献来源说明 ↗</a></div>
+      <button class="text-action" id="settingsBack" type="button">← 返回</button>
     </section>
   </main>
-  <footer class="site-footer"><span>原著定位 · 为核对来源而设计</span><span>索引段落 ≠ 出版物页码</span></footer>
+  <footer class="site-footer">
+    <span>原著学习 · 为读懂原著而设计</span>
+    <button class="footer-link" id="guideLink" type="button">使用说明</button>
+    <span>索引段落 ≠ 出版物页码</span>
+  </footer>
   <nav class="mobile-nav" id="mobileNav" aria-label="移动端导航"></nav>
   <script src="corpus.js"></script>
   <script src="src/retrieval.js"></script>
+  <script src="src/storage.js"></script>
   <script src="src/app.js"></script>
+  <script src="src/reader.js"></script>
+  <script src="src/topics.js"></script>
+  <script src="src/daily.js"></script>
+  <script src="src/mine.js"></script>
 </body>
 </html>
