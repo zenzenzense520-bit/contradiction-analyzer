@@ -26,7 +26,23 @@ for (const query of ["剩余价值","主要矛盾","和平共处","殖民地","�
 const filtered = context.window.CaRetrieval.search("实践",{author:"毛泽东",title:"实践论"});
 assert.ok(filtered.hits.length > 0 && filtered.hits.every(hit => hit.author === "毛泽东" && hit.title === "实践论"),"作者作品筛选失效");
 assert.equal(context.window.CaRetrieval.search("兮兮呵呵喵喵").hits.length,0,"无关词不应生成结果");
+// 升级回归：按正文匹配，校验多词逻辑和分页边界。
+const firstPage=context.window.CaRetrieval.search("剩余价值",{limit:12});
+const secondPage=context.window.CaRetrieval.search("剩余价值",{limit:12,offset:12});
+assert.equal(firstPage.hits.length,12,"首页应显示 12 条");
+assert.ok(firstPage.total>12 && secondPage.hits.length>0,"分页应能继续读取命中段落");
+assert.ok(!firstPage.hits.some(hit=>secondPage.hits.some(next=>next.id===hit.id)),"分页结果不应重复");
+const allWords=context.window.CaRetrieval.search("国家 革命",{mode:"all"});
+const anyWord=context.window.CaRetrieval.search("国家 革命",{mode:"any"});
+assert.ok(allWords.total>0 && anyWord.total>=allWords.total,"多词匹配模式的包含关系错误");
+assert.ok(allWords.hits.every(hit=>hit.text.includes("国家") && hit.text.includes("革命")),"全部词模式出现伪命中");
+const originalCorpus=context.window.CLASSIC_CORPUS;
+context.window.CLASSIC_CORPUS=[{id:"fixture",author:"作者",title:"标题命中",location:"网页标题",page:1,paragraph:1,
+  url:"https://www.marxists.org/chinese/fixture.htm",text:"正文只有这句话。",language:"中文",translation:false}];
+assert.equal(context.window.CaRetrieval.search("标题命中").total,0,"仅作品名命中不应冒充正文");
+context.window.CLASSIC_CORPUS=originalCorpus;
 const html = fs.readFileSync(path.join(root,"index.html"),"utf8");
+assert.ok(html.includes('href="src/style.css"'),"新版样式未加载");
 for (const src of ["corpus.js","src/retrieval.js","src/app.js"]) assert.ok(html.includes(`src="${src}"`),`HTML 未引入 ${src}`);
 assert.ok(!html.includes("src/analysis.js") && !html.includes("革命与爱 R&amp;L"),"旧分析功能仍在入口中");
 console.log(`通过：${corpus.length} 段、${works.size} 部中文作品、${new Set(corpus.map(item => item.author)).size} 类作者白名单、禁入规则与关键词定位。`);

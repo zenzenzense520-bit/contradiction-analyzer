@@ -1,60 +1,98 @@
-// 原著定位：仅返回语料中真实存在的中文段落，不生成答案。
+// 检索升级：仅按段落正文匹配，支持短语/全部词/任意词与分页。
+let cachedCorpus;
+let cachedRecords;
+let cachedCatalog;
+
 function normalize(value) {
-  return String(value || "").normalize("NFKC").toLowerCase().replace(/\s+/g," ").trim();
+  return String(value ?? "").normalize("NFKC").toLowerCase().replace(/\s+/g," ").trim();
 }
 
 function termsFor(query) {
-  const normalized = normalize(query);
-  const split = normalized.split(/[\s,，、;；]+/).filter(term => term.length >= 2);
-  return [...new Set([normalized,...split].filter(term => term.length >= 2))];
+  return [...new Set(normalize(query).split(/[\s,，、;；]+/).filter(term => term.length >= 2))];
 }
 
-function count(text, term) {
-  let total = 0, index = 0;
-  while ((index = text.indexOf(term,index)) >= 0) {total += 1; index += Math.max(1,term.length);}
+function getCorpus() {
+  return Array.isArray(window.CLASSIC_CORPUS) ? window.CLASSIC_CORPUS : [];
+}
+
+function records() {
+  const corpus=getCorpus();
+  if (corpus!==cachedCorpus) {
+    cachedCorpus=corpus;
+    cachedRecords=corpus.map(passage=>({passage,normalized:normalize(passage.text)}));
+    cachedCatalog=null;
+  }
+  return cachedRecords;
+}
+
+function count(text,term) {
+  let total=0,index=0;
+  while ((index=text.indexOf(term,index))>=0) {
+    total+=1;
+    index+=Math.max(1,term.length);
+  }
   return total;
 }
 
-function excerpt(text, terms) {
-  const source = String(text);
-  const lower = normalize(source);
-  const positions = terms.map(term => lower.indexOf(term)).filter(index => index >= 0);
-  const start = positions.length ? Math.max(0,Math.min(...positions)-95) : 0;
-  const value = source.slice(start,start+360);
-  return `${start ? "…" : ""}${value}${start+360 < source.length ? "…" : ""}`;
-}
-
-function search(query, filters={}) {
-  const corpus = Array.isArray(window.CLASSIC_CORPUS) ? window.CLASSIC_CORPUS : [];
-  const terms = termsFor(query);
-  if (!terms.length) return {query,terms:[],hits:[],total:0,scanned:corpus.length};
-  const exact = terms[0];
-  const ranked = [];
-  for (const passage of corpus) {
-    if (filters.author && passage.author !== filters.author) continue;
-    if (filters.title && passage.title !== filters.title) continue;
-    const text = normalize(passage.text);
-    const metadata = normalize(`${passage.author} ${passage.title} ${passage.location}`);
-    const matched = terms.filter(term => text.includes(term) || metadata.includes(term));
-    if (!matched.length) continue;
-    let score = matched.reduce((sum,term) => sum + count(text,term)*3 + count(metadata,term)*7,0);
-    if (text.includes(exact)) score += 12;
-    if (metadata.includes(exact)) score += 20;
-    ranked.push({...passage,score,matched,excerpt:excerpt(passage.text,matched)});
-  }
-  ranked.sort((a,b) => b.score-a.score || a.author.localeCompare(b.author,"zh-CN") || a.title.localeCompare(b.title,"zh-CN") || a.page-b.page || a.paragraph-b.paragraph);
-  return {query,terms,hits:ranked.slice(0,80),total:ranked.length,scanned:corpus.length};
+function excerpt(text,terms) {
+  const source=String(text);
+  const normalized=normalize(source);
+  const positions=terms.map(term=>normalized.indexOf(term)).filter(index=>index>=0);
+  const start=positions.length ? Math.max(0,Math.min(...positions)-95) : 0;
+  const snippet=source.slice(start,start+360);
+  return (start?"…":"")+snippet+(start+360<source.length?"…":"");
 }
 
 function catalog() {
-  const corpus = Array.isArray(window.CLASSIC_CORPUS) ? window.CLASSIC_CORPUS : [];
-  const works = new Map();
-  for (const item of corpus) {
-    const key = `${item.author}\u0000${item.title}`;
-    const current = works.get(key) || {author:item.author,title:item.title,paragraphs:0,pages:new Set(),url:item.url,language:item.language};
-    current.paragraphs += 1; current.pages.add(item.url); works.set(key,current);
+  records();
+  if (cachedCatalog) return cachedCatalog;
+  const works=new Map();
+  for (const item of cachedCorpus) {
+    const key=item.author+"\u0000"+item.title;
+    const work=works.get(key) || {author:item.author,title:item.title,paragraphs:0,pages:new Set(),url:item.url,language:item.language};
+    work.paragraphs+=1;
+    work.pages.add(item.url);
+    works.set(key,work);
   }
-  return [...works.values()].map(work => ({...work,pages:work.pages.size}));
+  cachedCatalog=[...works.values()].map(work=>({...work,pages:work.pages.size}));
+  return cachedCatalog;
 }
 
-window.CaRetrieval = {search,catalog,termsFor};
+function search(query,options={}) {
+  const normalized=normalize(query);
+  const words=termsFor(query);
+  const mode=["phrase","all","any"].includes(options.mode)?options.mode:"phrase";
+  const terms=mode==="phrase"?[normalized].filter(term=>term.length>=2):words;
+  const corpus=records();
+  const limit=Math.min(80,Math.max(1,Number(options.limit)||80));
+  const offset=Math.max(0,Number(options.offset)||0);
+  if (!terms.length) return {query,terms:[],hits:[],total:0,scanned:corpus.length,offset,limit,mode,byWork:[]};
+  const ranked=[];
+  const byWork=new Map();
+  for (const {passage,normalized:text} of corpus) {
+    if (options.author && passage.author!==options.author) continue;
+    if (options.title && passage.title!==options.title) continue;
+    const matched=terms.filter(term=>text.includes(term));
+    if (mode==="all" && matched.length!==terms.length) continue;
+    if (mode==="phrase" && matched.length!==1) continue;
+    if (mode==="any" && !matched.length) continue;
+    const key=passage.author+"\u0000"+passage.title;
+    const group=byWork.get(key)||{author:passage.author,title:passage.title,count:0};
+    group.count+=1;
+    byWork.set(key,group);
+    const score=matched.reduce((sum,term)=>sum+count(text,term)*3,0)+matched.length*8;
+    ranked.push({passage,score,matched});
+  }
+  ranked.sort((a,b)=>b.score-a.score ||
+    a.passage.author.localeCompare(b.passage.author,"zh-CN") ||
+    a.passage.title.localeCompare(b.passage.title,"zh-CN") ||
+    a.passage.page-b.passage.page || a.passage.paragraph-b.passage.paragraph);
+  const hits=ranked.slice(offset,offset+limit).map(item=>({
+    ...item.passage,score:item.score,matched:item.matched,
+    excerpt:excerpt(item.passage.text,item.matched)
+  }));
+  return {query,terms,hits,total:ranked.length,scanned:corpus.length,offset,limit,mode,
+    byWork:[...byWork.values()].sort((a,b)=>b.count-a.count)};
+}
+
+window.CaRetrieval={search,catalog,termsFor};
