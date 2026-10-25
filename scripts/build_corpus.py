@@ -18,6 +18,12 @@ ALLOWED_AUTHORS = {
     "马克思", "马克思、恩格斯", "恩格斯", "列宁", "斯大林", "毛泽东",
     "恩维尔·霍查", "周恩来", "胡志明", "切·格瓦拉", "布哈林、普列奥布拉任斯基",
 }
+# 文库个别页面缺 <body> 开始标签，遇到这些正文标签即视为已进入 body。
+BODY_TAGS = {
+    "p", "h1", "h2", "h3", "h4", "h5", "h6", "br", "hr", "div", "table",
+    "tr", "td", "th", "ul", "ol", "li", "a", "span", "img", "blockquote",
+    "pre", "dl", "dt", "dd",
+}
 
 class TextParser(HTMLParser):
     """兼容文库旧式未闭合 HTML，保留正文段落。"""
@@ -28,6 +34,7 @@ class TextParser(HTMLParser):
         self.parts: list[str] = []; self.blocks: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in BODY_TAGS and not self.skip_depth: self.in_body = True
         if tag == "body": self.in_body = True; self.active = True
         if tag in {"script", "style", "nav"}: self.skip_depth += 1
         if tag in {"p", "h1", "h2", "h3", "h4", "li"} and not self.skip_depth:
@@ -120,6 +127,13 @@ def main() -> None:
     single(entries, "马克思、恩格斯", "共产党宣言", "https://www.marxists.org/chinese/marx/01.htm", "manifesto")
     capital = "https://www.marxists.org/chinese/marx/capital/index.htm"
     add_pages(entries, "马克思", "资本论·第一卷", page_links(capital, r"/capital/\d{2}\.htm$"), "capital")
+    # 第二、三卷用《马克思恩格斯文集》第六、七卷（2009 年最新译本）：含卷说明、恩格斯序言与正文，注释/索引页不收录。
+    capital2 = "https://www.marxists.org/chinese/marx-engels2/06/index.htm"
+    add_pages(entries, "马克思", "资本论·第二卷",
+              page_links(capital2, r"/marx-engels2/06/(?:00[a-c]|0[1-9]|1[0-9]|2[01])\.htm$"), "capital-2")
+    capital3 = "https://www.marxists.org/chinese/marx-engels2/07/index.htm"
+    add_pages(entries, "马克思", "资本论·第三卷",
+              page_links(capital3, r"/marx-engels2/07/(?:00[a-b]|0[1-9]|[1-4][0-9]|5[0-3])\.htm$"), "capital-3")
     single(entries, "马克思", "雇佣劳动与资本", "https://www.marxists.org/chinese/marx/mia-chinese-marx-1847-1849.htm", "wage-labour")
     single(entries, "马克思", "工资、价格和利润", "https://www.marxists.org/chinese/marx/marxist.org-chinese-marx-1865-5.htm", "wages-price")
     single(entries, "马克思", "哥达纲领批判", "https://www.marxists.org/chinese/marx/marxist.org-chinese-marx-1875-4.htm", "gotha")

@@ -36,10 +36,10 @@ assert.ok(corpus.every(item => item.language === "中文" && item.translation ==
 assert.ok(corpus.every(item => item.text.length >= (item.title.includes("诗词") ? 2 : 12) && item.url.startsWith("https://www.marxists.org/chinese/")), "正文或中文来源缺失");
 assert.ok(corpus.every(item => item.location && item.page >= 1 && item.paragraph >= 1), "定位字段缺失");
 const works = new Set(corpus.map(item => item.title));
-for (const title of ["共产党宣言", "资本论·第一卷", "国家与革命", "论列宁主义基础", "矛盾论", "帝国主义与革命·第一部分", "和平共处五项原则", "法国殖民制度的罪状", "游击战", "古巴的社会主义和人", "共产主义ABC", "毛泽东诗词及本人说明", "反杜林论", "路德维希·费尔巴哈和德国古典哲学的终结", "唯物主义和经验批判主义"]) {
+for (const title of ["共产党宣言", "资本论·第一卷", "资本论·第二卷", "资本论·第三卷", "国家与革命", "论列宁主义基础", "矛盾论", "帝国主义与革命·第一部分", "和平共处五项原则", "法国殖民制度的罪状", "游击战", "古巴的社会主义和人", "共产主义ABC", "毛泽东诗词及本人说明", "反杜林论", "路德维希·费尔巴哈和德国古典哲学的终结", "唯物主义和经验批判主义"]) {
   assert.ok(works.has(title), `未收录《${title}》`);
 }
-for (const query of ["剩余价值", "主要矛盾", "和平共处", "殖民地", "游击队", "共产主义", "沁园春", "杜林", "经验批判主义", "自在之物"]) {
+for (const query of ["剩余价值", "主要矛盾", "和平共处", "殖民地", "游击队", "共产主义", "沁园春", "杜林", "经验批判主义", "自在之物", "简单再生产", "资本周转", "平均利润", "利息", "地租"]) {
   const result = context.window.CaRetrieval.search(query);
   assert.ok(result.hits.length > 0, `关键词“${query}”没有命中`);
   assert.ok(result.hits.every(hit => hit.text.includes(query) || `${hit.author}${hit.title}${hit.location}`.includes(query)), `“${query}”出现伪命中`);
