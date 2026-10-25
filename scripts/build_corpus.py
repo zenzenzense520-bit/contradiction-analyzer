@@ -1,12 +1,14 @@
 """从中文马克思主义文库的作者白名单构建原著定位索引。"""
 from __future__ import annotations
-import html, json, re, time, urllib.error, urllib.request
+import hashlib, html, json, re, time, urllib.error, urllib.request
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urldefrag, urljoin
 
 ROOT = Path(__file__).resolve().parents[1]
 USER_AGENT = "ContradictionAnalyzer/0.3 (source locator)"
+# 页面缓存仅用于本机可中断续跑，logs/ 已被 .gitignore 忽略，不进入仓库。
+CACHE_DIR = ROOT / "logs" / "page-cache"
 BANNED_METADATA = re.compile(
     r"托洛茨基|第四国际|主体思想|刘少奇|铁托|邓小平|"
     r"trotsky|fourth[-_ ]international|juche|liu[-_ ]?shaoqi|tito|deng[-_ ]?xiaoping",
@@ -50,7 +52,14 @@ class TextParser(HTMLParser):
             if len(value) >= self.min_length and not self.ignored: self.blocks.append(value)
         self.parts = []; self.active = False; self.ignored = False
 
+def cache_file(url: str) -> Path:
+    digest = hashlib.sha1(url.encode("utf-8")).hexdigest()
+    return CACHE_DIR / f"{digest}.html"
+
 def download(url: str) -> str:
+    cached = cache_file(url)
+    if cached.exists():
+        return cached.read_text(encoding="utf-8")
     # 文库偶尔会中断 TLS 连接；有限重试后仍失败才中止，避免生成残缺索引。
     for attempt in range(1, 4):
         try:
@@ -62,13 +71,17 @@ def download(url: str) -> str:
             if attempt == 3: raise RuntimeError(f"下载失败（已重试 3 次）：{url}") from error
             print(f"连接中断，等待后重试 {attempt}/3：{url}")
             time.sleep(attempt * 2)
+    page = content.decode("utf-8", errors="replace")
     for encoding in [charset, "utf-8", "gb18030"]:
         if not encoding: continue
         try:
-            page = content.decode(encoding)
-            if page.count("�") < 3: return page
+            candidate = content.decode(encoding)
+            if candidate.count("�") < 3:
+                page = candidate; break
         except UnicodeDecodeError: continue
-    return content.decode("utf-8", errors="replace")
+    cached.parent.mkdir(parents=True, exist_ok=True)
+    cached.write_text(page, encoding="utf-8")
+    return page
 
 def page_links(index_url: str, pattern: str) -> list[str]:
     paths = re.findall(r'href=["\']([^"\']+)["\']', download(index_url), re.I)
@@ -115,9 +128,19 @@ def main() -> None:
     socialism_pages = [socialism] + page_links(socialism, r"/engels/1880/\d+\.htm$")
     add_pages(entries, "恩格斯", "社会主义从空想到科学的发展", list(dict.fromkeys(socialism_pages)), "socialism")
     single(entries, "恩格斯", "家庭、私有制和国家的起源", "https://www.marxists.org/chinese/engels/marxist.org-chinese-engels-1884-3.htm", "family")
+    # 《反杜林论》正文为全集第20卷 001-005：序言、引论与三编；其后手稿准备材料不属正文。
+    duhring = "https://www.marxists.org/chinese/marx-engels/20/index.htm"
+    add_pages(entries, "恩格斯", "反杜林论",
+              page_links(duhring, r"/marx-engels/20/00[1-5]\.htm$"), "duhring")
+    single(entries, "恩格斯", "路德维希·费尔巴哈和德国古典哲学的终结",
+           "https://www.marxists.org/chinese/engels/marxist.org-chinese-engels-1888.htm", "feuerbach")
     state = "https://www.marxists.org/chinese/lenin/191708-09/index.htm"
     add_pages(entries, "列宁", "国家与革命", page_links(state, r"/191708-09/\d{2}\.htm$"), "state")
     single(entries, "列宁", "帝国主义是资本主义的最高阶段", "https://www.marxists.org/chinese/lenin/15.htm", "imperialism")
+    # 《唯物主义和经验批判主义》正文为全集第18卷 002-011：序言、代绪论、六章、结论与补充。
+    mec = "https://www.marxists.org/chinese/lenin-cworks/18/index.htm"
+    add_pages(entries, "列宁", "唯物主义和经验批判主义",
+              page_links(mec, r"/lenin-cworks/18/0(?:0[2-9]|1[01])\.htm$"), "empirio-criticism")
     single(entries, "斯大林", "论列宁主义基础", "https://www.marxists.org/chinese/stalin/mia-chinese-stalin-192404.htm", "foundations")
     mao = [
         ("中国社会各阶级的分析", "marxist.org-chinese-mao-19251201.htm", "classes"),
