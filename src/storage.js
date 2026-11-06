@@ -7,6 +7,8 @@ const CaStore = (() => {
     progress: "marxist-reader-progress",
     daily: "marxist-daily"
   };
+  const BACKUP_APP = "contradiction-analyzer";
+  const BACKUP_VERSION = 1;
 
   // 读取并解析一个键，失败或不存在时返回 fallback。
   function readKey(key, fallback) {
@@ -173,11 +175,57 @@ const CaStore = (() => {
     return count;
   }
 
+  // 有阅读进度的作品数。
+  function readingCount() {
+    return Object.keys(getAllProgress()).length;
+  }
+
+  // 导出全部本地学习数据为结构化对象，文件下载由界面层处理。
+  function exportData() {
+    return {
+      app: BACKUP_APP,
+      version: BACKUP_VERSION,
+      exportedAt: new Date().toISOString(),
+      data: {
+        history: getHistory(),
+        favorites: getFavorites(),
+        progress: getAllProgress(),
+        daily: getDailyMap()
+      }
+    };
+  }
+
+  // 校验导入对象并整体覆盖四个数据键；任一结构不合法即拒绝写入，返回结果说明。
+  function importData(payload) {
+    const fail = error => ({ ok: false, error });
+    if (!payload || typeof payload !== "object") return fail("备份内容不是有效对象。");
+    if (payload.app !== BACKUP_APP) return fail("文件不是本工具的学习备份。");
+    if (typeof payload.version !== "number" || payload.version > BACKUP_VERSION)
+      return fail("备份版本无法识别。");
+    const data = payload.data;
+    if (!data || typeof data !== "object") return fail("备份缺少数据区。");
+    if (!Array.isArray(data.history) || !data.history.every(i => i && typeof i.query === "string"))
+      return fail("检索历史数据损坏。");
+    if (!Array.isArray(data.favorites) || !data.favorites.every(i => i && typeof i.id === "string"))
+      return fail("收藏数据损坏。");
+    if (!data.progress || typeof data.progress !== "object") return fail("阅读进度数据损坏。");
+    if (!data.daily || typeof data.daily !== "object") return fail("打卡数据损坏。");
+    const writes = [
+      writeKey(KEYS.history, data.history),
+      writeKey(KEYS.favorites, data.favorites),
+      writeKey(KEYS.progress, data.progress),
+      writeKey(KEYS.daily, data.daily)
+    ];
+    if (writes.some(ok => !ok)) return fail("写入失败，浏览器存储空间可能已满。");
+    return { ok: true };
+  }
+
   return {
     getHistory, addHistory, clearHistory,
     getFavorites, isFavorite, toggleFavorite, setNote, removeFavorite,
-    getProgress, setProgress, workKey,
-    getDailyMap, dailyStatus, markDaily, unmarkDaily, shiftDate, streak
+    getProgress, setProgress, workKey, readingCount,
+    getDailyMap, dailyStatus, markDaily, unmarkDaily, shiftDate, streak,
+    exportData, importData
   };
 })();
 

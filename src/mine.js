@@ -19,6 +19,7 @@ const CaMine = (() => {
     const today = todayString();
     document.getElementById("mineStats").innerHTML = '<div class="mine-stats-grid">' +
       stat(favorites.length, "收藏段落") + stat(noteCount, "学习笔记") +
+      stat(CaStore.readingCount(), "在读作品") +
       stat(CaStore.streak(today), "连续打卡（天）") + stat(marked.length, "累计打卡（天）") + "</div>";
   }
 
@@ -103,8 +104,75 @@ const CaMine = (() => {
     }));
   }
 
+  function setBackupMsg(message, isError) {
+    const msg = document.getElementById("backupMsg");
+    if (msg) {
+      msg.textContent = message;
+      msg.classList.toggle("backup-error", Boolean(isError));
+    }
+  }
+
+  // 导出全部学习数据为 JSON 文件。
+  function doExport() {
+    try {
+      const blob = new Blob([JSON.stringify(CaStore.exportData(), null, 2)],
+        { type: "application/json;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "marxist-study-backup-" + todayString() + ".json";
+      document.body.append(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setBackupMsg("备份文件已开始下载。", false);
+    } catch (error) {
+      setBackupMsg("导出失败：" + error.message, true);
+    }
+  }
+
+  // 从备份文件读取并恢复。
+  function doImport(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      let payload;
+      try {
+        payload = JSON.parse(String(reader.result));
+      } catch {
+        setBackupMsg("导入失败：文件不是有效的 JSON。", true);
+        return;
+      }
+      const result = CaStore.importData(payload);
+      if (result.ok) {
+        setBackupMsg("导入成功，学习数据已恢复。", false);
+        render();
+      } else {
+        setBackupMsg("导入失败：" + result.error, true);
+      }
+    };
+    reader.onerror = () => setBackupMsg("读取文件失败，请重试。", true);
+    reader.readAsText(file, "utf-8");
+    event.target.value = "";
+  }
+
+  // 数据备份区：导出文件或从备份恢复。
+  function renderBackup() {
+    const el = document.getElementById("mineBackup");
+    el.innerHTML = '<div class="backup-head"><h3>数据备份</h3><p>收藏、笔记、阅读进度与打卡只存在本浏览器，建议定期导出备份；换设备或清空数据前先导出。</p></div>' +
+      '<div class="backup-actions"><button type="button" id="exportBtn">导出备份文件</button>' +
+      '<button type="button" id="importBtn">导入备份</button>' +
+      '<input type="file" id="importFile" accept="application/json,.json" hidden></div>' +
+      '<p class="backup-msg" id="backupMsg" role="status"></p>';
+    document.getElementById("exportBtn").onclick = doExport;
+    document.getElementById("importBtn").onclick = () => document.getElementById("importFile").click();
+    document.getElementById("importFile").onchange = doImport;
+  }
+
   function render() {
     renderStats();
+    renderBackup();
     renderTabs();
     renderFavorites();
     renderHistory();

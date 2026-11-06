@@ -73,6 +73,18 @@ assert.equal(Store.getFavorites()[0].note, "重点段落", "笔记内容不符")
 assert.equal(Store.toggleFavorite(sample), false, "取消收藏应返回 false");
 assert.equal(Store.getFavorites().length, 0, "取消收藏后应清空");
 
+// —— 数据导出/导入备份 ——
+const backup = Store.exportData();
+assert.equal(backup.app, "contradiction-analyzer", "导出缺少应用标识");
+assert.equal(backup.version, 1, "导出版本错误");
+assert.ok(backup.data && Array.isArray(backup.data.favorites) &&
+  typeof backup.data.daily === "object" && typeof backup.data.progress === "object", "导出数据结构不完整");
+assert.ok(Number.isInteger(Store.readingCount()), "在读统计异常");
+assert.equal(Store.importData({ ...backup, data: { ...backup.data, history: [] } }).ok, true, "合法备份应导入成功");
+assert.equal(Store.importData({ app: "other", version: 1, data: {} }).ok, false, "非本工具备份应拒绝");
+assert.equal(Store.importData({ app: "contradiction-analyzer", version: 1, data: { history: "x" } }).ok, false, "损坏数据应拒绝");
+assert.equal(Store.importData(null).ok, false, "空内容应拒绝");
+
 // —— 打卡与连续天数（固定基准日期，避免随真实日期漂移）——
 const base = "2026-10-16";
 Store.markDaily(base, "x");

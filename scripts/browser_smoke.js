@@ -182,13 +182,19 @@ async function main() {
       const stats = document.querySelectorAll(".mine-stats-grid div").length;
       const favCount = Number(document.querySelector(".mine-stats-grid div strong").innerText);
       const favCards = document.querySelectorAll(".fav-card").length;
+      const backupButtons = document.querySelectorAll("#mineBackup .backup-actions button").length;
       document.querySelector("[data-mtab=history]").click();
       const historyRows = document.querySelectorAll(".history-row").length;
-      return { stats, favCount, favCards, historyRows };
+      return { stats, favCount, favCards, backupButtons, historyRows };
     })()`);
-    assert.equal(mine.stats, 4, "我的学习统计卡应为 4 个");
+    assert.equal(mine.stats, 5, "我的学习统计卡应为 5 个");
+    assert.equal(mine.backupButtons, 2, "备份区应含导出与导入按钮");
     assert.ok(mine.favCount >= 1 && mine.favCards >= 1, "收藏未在我的学习显示");
     assert.ok(mine.historyRows > 0, "检索历史未显示");
+    // 切回收藏标签并截图，确认 5 卡统计与备份区渲染，再切回历史供恢复测试。
+    await evaluate(socket, `document.querySelector("[data-mtab=favorites]").click()`);
+    await capture(socket, "preview-mine.png");
+    await evaluate(socket, `document.querySelector("[data-mtab=history]").click()`);
     const restored = await evaluate(socket, `(() => {
       document.querySelector(".history-row").click();
       return { tab: document.querySelector("[data-tab=search]").classList.contains("active"),
